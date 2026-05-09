@@ -1,0 +1,9 @@
+id,name,type,avg_rent_sqft,primary_demographic,suitable_business_types,projected_rent_hike_percent,noise_level,best_open_time,best_close_time,description
+1,Saddar,Commercial,150,Mixed,Retail;Food;Tech,10,High,09:00 AM,10:00 PM,The historic commercial heart of Peshawar. Excellent foot traffic but high congestion.
+2,Hayatabad,Mixed,120,Families;Students,Food;Retail;Clinics,8,Medium,10:00 AM,11:00 PM,Planned suburb with modern amenities. Great for family-oriented businesses and high-end cafes.
+3,University Town,Mixed,180,Students;High-Income,Food;Tech;Boutiques,12,Medium,10:00 AM,12:00 AM,Upscale area near universities. Perfect for premium brands, tech hubs, and aesthetic cafes.
+4,Karkhano Market,Commercial,80,Bargain Shoppers,Retail;Wholesale,5,High,08:00 AM,08:00 PM,Famous for imported goods and wholesale. Best for bulk retail and bargain businesses.
+5,Ring Road,Industrial,50,General,Industrial;Warehousing;Large Retail,15,High,06:00 AM,10:00 PM,Expanding highway area. Ideal for large spaces, warehousing, or mega-marts.
+6,Board Bazaar,Commercial,90,Students;Locals,Food;Retail,7,High,08:00 AM,11:00 PM,Bustling local market near educational institutes. Good for affordable food and daily needs.
+7,Gulbahar,Mixed,95,Families,Retail;Food,6,Medium,09:00 AM,10:00 PM,Established residential-commercial area. Good for localized retail and family businesses.
+8,Deans Trade Center,Mall,200,Mixed,Retail;Tech;Offices,8,Low,10:00 AM,09:00 PM,Premier shopping mall. Secure, climate-controlled, great for electronics, clothing, and offices.
