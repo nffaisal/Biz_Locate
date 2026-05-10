@@ -96,14 +96,18 @@ std::string toLower(std::string s) {
 std::string getAIResponse(const std::string& query) {
     std::string q = toLower(query);
     
-    if (q.find("trend") != std::string::npos) {
+    if (q.find("noise") != std::string::npos || q.find("sound") != std::string::npos) {
+        return "Noise Pollution Solutions: If your chosen area has high noise levels (like Saddar or Board Bazaar), consider installing double-glazed acoustic windows, sound-absorbing acoustic foam panels on the ceiling, and thick drapery. Playing ambient background music inside the store can also effectively mask outside traffic noise.";
+    } else if ((q.find("disab") != std::string::npos || q.find("wheelchair") != std::string::npos || q.find("old") != std::string::npos) && (q.find("fix") != std::string::npos || q.find("improve") != std::string::npos || q.find("access") != std::string::npos)) {
+        return "Improving Accessibility: To make your store more accessible for disabled or elderly customers, you can: 1) Install a portable aluminum wheelchair ramp if permanent concrete isn't allowed. 2) Ensure aisles are at least 36 inches wide. 3) Use lever-style door handles instead of knobs. 4) Place popular items on lower shelves. 5) Add a clearly marked priority seating area.";
+    } else if (q.find("trend") != std::string::npos) {
         return "Market Trend Analysis: Currently in Peshawar, we are seeing a massive shift towards tech-integrated retail and 'aesthetic' cafes, particularly in areas like University Town and DHA. E-commerce integration for brick-and-mortar stores is showing a 40% higher retention rate. We suggest securing a smaller physical footprint but investing heavily in delivery logistics.";
     } else if (q.find("market") != std::string::npos) {
         return "Marketing Strategy Overview: The most effective marketing channel for local businesses right now is short-form video content on TikTok and Instagram Reels targeting the youth demographic (highly active in Hayatabad and University Town). Combine this with localized SEO ('near me' searches) and BRT-station billboard advertising for maximum local penetration.";
     } else if (q.find("competit") != std::string::npos) {
         return "Competitive Landscape: The food and retail sectors in Saddar and Hayatabad are highly saturated. To stand out, you must offer a unique value proposition. Consider niching down (e.g., instead of a general cafe, a specialty matcha bar). In newer sectors like DHA, first-mover advantage is still possible for essential services like clinics and high-end salons.";
     } else if (q.find("disabled") != std::string::npos || q.find("old") != std::string::npos || q.find("access") != std::string::npos) {
-        return "Accessibility Insights: If your target demographic includes the elderly or disabled individuals, prioritize locations near BRT stations (like Saddar, University Town, or Board Bazaar) as the BRT system is highly accessible. Additionally, look for newer plazas in Hayatabad and DHA which adhere to modern building codes requiring ramps and elevators.";
+        return "Accessibility Insights: If your target demographic includes the elderly or disabled individuals, prioritize locations near BRT stations (like Saddar, University Town, or Board Bazaar) as the BRT system is highly accessible. Additionally, look for newer plazas in Hayatabad and DHA which adhere to modern building codes requiring ramps and elevators. You can also ask me how to *improve* or *fix* accessibility for your specific store!";
     } else if (q.find("dha") != std::string::npos) {
         return "DHA Peshawar Overview: DHA is rapidly developing into a premium commercial hub. Rent is high, but the demographic is strictly high-income. It is ideal for luxury brands, specialized medical clinics, and premium dining. Security and infrastructure are best-in-class.";
     } else if (q.find("hello") != std::string::npos || q.find("hi") != std::string::npos) {
