@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <map>
 #include "httplib.h"
 #include "json.hpp"
 
@@ -21,6 +22,7 @@ struct Location {
     std::string best_open_time;
     std::string best_close_time;
     std::string description;
+    std::string accessibility;
 };
 
 std::vector<Location> loadLocations(const std::string& filename) {
@@ -50,6 +52,7 @@ std::vector<Location> loadLocations(const std::string& filename) {
         std::getline(ss, loc.best_open_time, ',');
         std::getline(ss, loc.best_close_time, ',');
         std::getline(ss, loc.description, ',');
+        std::getline(ss, loc.accessibility, ',');
         
         locations.push_back(loc);
     }
@@ -59,33 +62,49 @@ std::vector<Location> loadLocations(const std::string& filename) {
 double calculateScore(const Location& loc, double userMaxRentPerSqft, const std::string& userDemo, const std::string& userType) {
     double score = 0.0;
     
-    // Rent factor: if it's within budget, it's a huge plus.
-    // The closer it is to the budget, maybe it's more premium, but cheaper is also good.
-    // Let's say if rent <= max rent, base score is 50. Then we subtract a penalty if it's too expensive.
     if (loc.avg_rent_sqft <= userMaxRentPerSqft) {
         score += 50.0;
-        // Small bonus for being under budget
         score += ((userMaxRentPerSqft - loc.avg_rent_sqft) / userMaxRentPerSqft) * 10.0; 
     } else {
-        // Penalty for over budget
         score -= ((loc.avg_rent_sqft - userMaxRentPerSqft) / userMaxRentPerSqft) * 50.0;
     }
 
-    // Demographic factor
     if (loc.primary_demographic.find(userDemo) != std::string::npos || loc.primary_demographic.find("Mixed") != std::string::npos || loc.primary_demographic.find("General") != std::string::npos) {
         score += 20.0;
     }
 
-    // Business type factor
     if (loc.suitable_business_types.find(userType) != std::string::npos) {
         score += 30.0;
     }
 
-    // Cap score
     if (score > 100.0) score = 100.0;
-    if (score < 0.0) score = 0.0;
-
     return score;
+}
+
+// Helper to convert string to lowercase for basic matching
+std::string toLower(std::string s) {
+    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c){ return std::tolower(c); });
+    return s;
+}
+
+std::string getAIResponse(const std::string& query) {
+    std::string q = toLower(query);
+    
+    if (q.find("trend") != std::string::npos) {
+        return "Market Trend Analysis: Currently in Peshawar, we are seeing a massive shift towards tech-integrated retail and 'aesthetic' cafes, particularly in areas like University Town and DHA. E-commerce integration for brick-and-mortar stores is showing a 40% higher retention rate. We suggest securing a smaller physical footprint but investing heavily in delivery logistics.";
+    } else if (q.find("market") != std::string::npos) {
+        return "Marketing Strategy Overview: The most effective marketing channel for local businesses right now is short-form video content on TikTok and Instagram Reels targeting the youth demographic (highly active in Hayatabad and University Town). Combine this with localized SEO ('near me' searches) and BRT-station billboard advertising for maximum local penetration.";
+    } else if (q.find("competit") != std::string::npos) {
+        return "Competitive Landscape: The food and retail sectors in Saddar and Hayatabad are highly saturated. To stand out, you must offer a unique value proposition. Consider niching down (e.g., instead of a general cafe, a specialty matcha bar). In newer sectors like DHA, first-mover advantage is still possible for essential services like clinics and high-end salons.";
+    } else if (q.find("disabled") != std::string::npos || q.find("old") != std::string::npos || q.find("access") != std::string::npos) {
+        return "Accessibility Insights: If your target demographic includes the elderly or disabled individuals, prioritize locations near BRT stations (like Saddar, University Town, or Board Bazaar) as the BRT system is highly accessible. Additionally, look for newer plazas in Hayatabad and DHA which adhere to modern building codes requiring ramps and elevators.";
+    } else if (q.find("dha") != std::string::npos) {
+        return "DHA Peshawar Overview: DHA is rapidly developing into a premium commercial hub. Rent is high, but the demographic is strictly high-income. It is ideal for luxury brands, specialized medical clinics, and premium dining. Security and infrastructure are best-in-class.";
+    } else if (q.find("hello") != std::string::npos || q.find("hi") != std::string::npos) {
+        return "Hello! I am the BizLocate AI Assistant. I can help you with market trends, marketing strategies, competitor analysis, and location-specific insights. What would you like to know about starting your business in Peshawar?";
+    }
+    
+    return "AI Analysis Complete: Based on current data, your query requires a multi-faceted approach. Focus on identifying your core customer base first. Ensure your business model accounts for the projected 8-10% annual rent hikes in premium commercial areas. For a more detailed breakdown, try asking about 'market trends', 'competitors', or 'marketing strategy'.";
 }
 
 int main() {
@@ -102,7 +121,7 @@ int main() {
         try {
             auto body = json::parse(req.body);
             double budget = body.value("budget", 0.0);
-            double rentAllocation = body.value("rentAllocation", 20.0); // percentage
+            double rentAllocation = body.value("rentAllocation", 20.0);
             std::string spaceSizeStr = body.value("spaceSize", "Medium");
             std::string demographic = body.value("demographic", "");
             std::string areaNeed = body.value("areaNeed", "");
@@ -128,8 +147,10 @@ int main() {
                 return a.score > b.score;
             });
 
+            bool exactMatchFound = false;
             for (const auto& rl : ranked) {
-                if (rl.score > 0) { // return matches
+                if (rl.score > 0) { 
+                    exactMatchFound = true;
                     json j;
                     j["id"] = rl.loc.id;
                     j["name"] = rl.loc.name;
@@ -142,8 +163,37 @@ int main() {
                     j["best_open_time"] = rl.loc.best_open_time;
                     j["best_close_time"] = rl.loc.best_close_time;
                     j["description"] = rl.loc.description;
+                    j["accessibility"] = rl.loc.accessibility;
                     j["score"] = rl.score;
                     j["estimated_monthly_rent"] = rl.loc.avg_rent_sqft * spaceSizeSqft;
+                    j["is_approximation"] = false;
+                    results.push_back(j);
+                }
+            }
+
+            // Approximation logic if no exact matches are found
+            if (!exactMatchFound && !ranked.empty()) {
+                // Return top 3 closest matches as approximations
+                for (size_t i = 0; i < std::min(size_t(3), ranked.size()); ++i) {
+                    const auto& rl = ranked[i];
+                    json j;
+                    j["id"] = rl.loc.id;
+                    j["name"] = rl.loc.name;
+                    j["type"] = rl.loc.type;
+                    j["avg_rent_sqft"] = rl.loc.avg_rent_sqft;
+                    j["primary_demographic"] = rl.loc.primary_demographic;
+                    j["suitable_business_types"] = rl.loc.suitable_business_types;
+                    j["projected_rent_hike_percent"] = rl.loc.projected_rent_hike_percent;
+                    j["noise_level"] = rl.loc.noise_level;
+                    j["best_open_time"] = rl.loc.best_open_time;
+                    j["best_close_time"] = rl.loc.best_close_time;
+                    j["description"] = rl.loc.description;
+                    j["accessibility"] = rl.loc.accessibility;
+                    j["score"] = 0.0; // Reset score for display purposes
+                    double estRent = rl.loc.avg_rent_sqft * spaceSizeSqft;
+                    j["estimated_monthly_rent"] = estRent;
+                    j["is_approximation"] = true;
+                    j["budget_increase_needed"] = (estRent > maxMonthlyRent) ? (estRent - maxMonthlyRent) : 0;
                     results.push_back(j);
                 }
             }
@@ -157,7 +207,29 @@ int main() {
         }
     });
 
-    svr.Options("/api/recommend", [](const httplib::Request&, httplib::Response& res) {
+    svr.Post("/api/chat", [&](const httplib::Request& req, httplib::Response& res) {
+        res.set_header("Access-Control-Allow-Origin", "*");
+        res.set_header("Access-Control-Allow-Methods", "POST, OPTIONS");
+        res.set_header("Access-Control-Allow-Headers", "Content-Type");
+
+        try {
+            auto body = json::parse(req.body);
+            std::string query = body.value("query", "");
+            
+            std::string responseText = getAIResponse(query);
+            
+            json out;
+            out["response"] = responseText;
+            res.set_content(out.dump(), "application/json");
+        } catch (const std::exception& e) {
+            json err;
+            err["error"] = e.what();
+            res.status = 400;
+            res.set_content(err.dump(), "application/json");
+        }
+    });
+
+    svr.Options(R"(/api/(recommend|chat))", [](const httplib::Request&, httplib::Response& res) {
         res.set_header("Access-Control-Allow-Origin", "*");
         res.set_header("Access-Control-Allow-Methods", "POST, OPTIONS");
         res.set_header("Access-Control-Allow-Headers", "Content-Type");

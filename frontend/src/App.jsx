@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
-import { MapPin, DollarSign, Users, Briefcase, ChevronRight, TrendingUp, VolumeX, Clock, Map } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { MapPin, DollarSign, Users, Briefcase, ChevronRight, TrendingUp, VolumeX, Clock, Map, MessageSquare, X, Send, AlertTriangle, Accessibility } from 'lucide-react';
 import './index.css';
 import mapPlaceholder from './assets/map_placeholder.png';
 
 function App() {
   const [formData, setFormData] = useState({
     budget: "50000",
-    allocationType: 'percentage', // 'percentage' or 'amount'
+    allocationType: 'percentage',
     rentAllocationValue: "20",
     spaceSize: 'Medium',
     demographic: 'Mixed',
@@ -16,6 +16,23 @@ function App() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [isApproximation, setIsApproximation] = useState(false);
+
+  // Chatbot State
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState([
+    { sender: 'ai', text: 'Hello! I am the BizLocate AI Assistant. Ask me about market trends, accessibility, BRT locations, or competitor analysis in Peshawar!' }
+  ]);
+  const [chatInput, setChatInput] = useState("");
+  const messagesEndRef = useRef(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [chatMessages, chatOpen]);
 
   const formatNumber = (num) => {
     if (!num) return "";
@@ -44,11 +61,10 @@ function App() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    // Process form data for API
+    
     const budgetNum = Number(formData.budget) || 0;
     let rentAllocPercent = 0;
-
+    
     if (formData.allocationType === 'percentage') {
       rentAllocPercent = Number(formData.rentAllocationValue) || 0;
     } else {
@@ -66,26 +82,49 @@ function App() {
 
     setLoading(true);
     setSearched(true);
-
+    
     try {
       const response = await fetch('http://localhost:8080/api/recommend', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(apiData)
       });
-
+      
       if (!response.ok) throw new Error('Network response was not ok');
-
+      
       const data = await response.json();
       setResults(data);
+      if (data.length > 0 && data[0].is_approximation) {
+        setIsApproximation(true);
+      } else {
+        setIsApproximation(false);
+      }
     } catch (error) {
       console.error("Failed to fetch recommendations:", error);
-      // Fallback for demonstration if backend fails
       setResults([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleChatSubmit = async (e) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+
+    const userMessage = chatInput;
+    setChatMessages(prev => [...prev, { sender: 'user', text: userMessage }]);
+    setChatInput("");
+
+    try {
+      const response = await fetch('http://localhost:8080/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: userMessage })
+      });
+      const data = await response.json();
+      setChatMessages(prev => [...prev, { sender: 'ai', text: data.response }]);
+    } catch (err) {
+      setChatMessages(prev => [...prev, { sender: 'ai', text: "Sorry, I am having trouble connecting to the server." }]);
     }
   };
 
@@ -96,16 +135,16 @@ function App() {
           <h1>BizLocate</h1>
           <p className="subtitle">Your business, our solution.</p>
         </div>
-
+        
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label><DollarSign size={18} style={{ verticalAlign: 'middle', marginRight: '5px' }} /> Total Business Budget</label>
+            <label><DollarSign size={18} style={{verticalAlign: 'middle', marginRight: '5px'}}/> Total Business Budget</label>
             <div className="input-with-currency">
-              <input
-                type="text"
-                name="budget"
-                value={formatNumber(formData.budget)}
-                onChange={handleBudgetChange}
+              <input 
+                type="text" 
+                name="budget" 
+                value={formatNumber(formData.budget)} 
+                onChange={handleBudgetChange} 
                 required
                 placeholder="e.g. 50,000"
               />
@@ -117,26 +156,26 @@ function App() {
           <div className="form-group">
             <label>Rent Allocation</label>
             <div className="allocation-toggle">
-              <button
-                type="button"
+              <button 
+                type="button" 
                 className={formData.allocationType === 'percentage' ? 'active' : ''}
-                onClick={() => setFormData(prev => ({ ...prev, allocationType: 'percentage', rentAllocationValue: '' }))}
+                onClick={() => setFormData(prev => ({...prev, allocationType: 'percentage', rentAllocationValue: ''}))}
               >
                 Percentage (%)
               </button>
-              <button
-                type="button"
+              <button 
+                type="button" 
                 className={formData.allocationType === 'amount' ? 'active' : ''}
-                onClick={() => setFormData(prev => ({ ...prev, allocationType: 'amount', rentAllocationValue: '' }))}
+                onClick={() => setFormData(prev => ({...prev, allocationType: 'amount', rentAllocationValue: ''}))}
               >
                 Exact Amount
               </button>
             </div>
             <div className="input-with-currency">
-              <input
-                type="text"
-                value={formData.allocationType === 'amount' ? formatNumber(formData.rentAllocationValue) : formData.rentAllocationValue}
-                onChange={handleAllocationChange}
+              <input 
+                type="text" 
+                value={formData.allocationType === 'amount' ? formatNumber(formData.rentAllocationValue) : formData.rentAllocationValue} 
+                onChange={handleAllocationChange} 
                 required
                 placeholder={formData.allocationType === 'percentage' ? "e.g. 20" : "e.g. 10,000"}
               />
@@ -146,7 +185,7 @@ function App() {
           </div>
 
           <div className="form-group">
-            <label><Briefcase size={18} style={{ verticalAlign: 'middle', marginRight: '5px' }} /> Space Size Required</label>
+            <label><Briefcase size={18} style={{verticalAlign: 'middle', marginRight: '5px'}}/> Space Size Required</label>
             <select name="spaceSize" value={formData.spaceSize} onChange={handleChange}>
               <option value="Small">Small (500 sq ft)</option>
               <option value="Medium">Medium (1000 sq ft)</option>
@@ -155,7 +194,7 @@ function App() {
           </div>
 
           <div className="form-group">
-            <label><Users size={18} style={{ verticalAlign: 'middle', marginRight: '5px' }} /> Target Demographic</label>
+            <label><Users size={18} style={{verticalAlign: 'middle', marginRight: '5px'}}/> Target Demographic</label>
             <select name="demographic" value={formData.demographic} onChange={handleChange}>
               <option value="Mixed">Mixed (General Public)</option>
               <option value="Families">Families</option>
@@ -166,7 +205,7 @@ function App() {
           </div>
 
           <div className="form-group">
-            <label><MapPin size={18} style={{ verticalAlign: 'middle', marginRight: '5px' }} /> Business Type</label>
+            <label><MapPin size={18} style={{verticalAlign: 'middle', marginRight: '5px'}}/> Business Type</label>
             <select name="areaNeed" value={formData.areaNeed} onChange={handleChange}>
               <option value="Retail">Retail Store</option>
               <option value="Food">Food / Restaurant</option>
@@ -189,26 +228,36 @@ function App() {
           </div>
         ) : !searched ? (
           <div className="empty-state">
-            <Map size={64} style={{ marginBottom: '1rem' }} />
+            <Map size={64} style={{marginBottom: '1rem'}} />
             <h2>Ready to find your next spot?</h2>
-            <p> discover data-driven location recommendations tailored to your business needs.</p>
+            <p>Fill out the form to discover data-driven location recommendations tailored to your business needs.</p>
           </div>
         ) : results.length === 0 ? (
           <div className="empty-state">
-            <h2>No exact matches found</h2>
-            <p>Try increasing your budget or adjusting your requirements for better results.</p>
+            <h2>No matches found</h2>
+            <p>Try adjusting your requirements for better results.</p>
           </div>
         ) : (
           <>
             <div className="map-placeholder">
               <img src={mapPlaceholder} alt="Recommended Area Map Layout" />
               <div className="map-overlay">
-                <MapPin size={18} /> Viewing Top Recommendations
+                <MapPin size={18} /> {isApproximation ? "Viewing Closest Matches" : "Viewing Top Recommendations"}
               </div>
             </div>
 
+            {isApproximation && (
+              <div className="approximation-banner">
+                <AlertTriangle size={24} style={{flexShrink: 0}} />
+                <div>
+                  <strong>No exact matches found for your current budget.</strong>
+                  <p style={{fontSize: '0.9rem', marginTop: '0.2rem'}}>We found the closest premium locations. If you increase your monthly rent budget, these become viable options.</p>
+                </div>
+              </div>
+            )}
+
             <div className="results-header">
-              <h2>Top Matches for You</h2>
+              <h2>{isApproximation ? "Closest Alternatives" : "Top Matches for You"}</h2>
             </div>
 
             <div className="recommendations-grid">
@@ -216,9 +265,11 @@ function App() {
                 <div key={loc.id} className="recommendation-card">
                   <div className="card-header">
                     <div className="location-name">{loc.name}</div>
-                    <div className="match-score">
-                      {loc.score.toFixed(0)}% Match
-                    </div>
+                    {!loc.is_approximation && (
+                      <div className="match-score">
+                        {loc.score.toFixed(0)}% Match
+                      </div>
+                    )}
                   </div>
 
                   <div className="card-details">
@@ -232,18 +283,31 @@ function App() {
                     </div>
                   </div>
 
-                  <div className="insights-box">
-                    <h4><ChevronRight size={14} style={{ verticalAlign: 'middle' }} /> Area Insights</h4>
-                    <p>{loc.description}</p>
+                  {loc.is_approximation && loc.budget_increase_needed > 0 && (
+                    <div style={{marginBottom: '1rem', fontSize: '0.85rem', color: '#b45309', fontWeight: 600}}>
+                      Requires ~PKR {loc.budget_increase_needed.toLocaleString()} more in rent.
+                    </div>
+                  )}
 
-                    <div style={{ marginTop: '1rem', display: 'flex', flexWrap: 'wrap', gap: '0.8rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#b45309', fontSize: '0.85rem', fontWeight: 600 }}>
+                  <div className="insights-box">
+                    <h4><ChevronRight size={14} style={{verticalAlign: 'middle'}}/> Area Insights</h4>
+                    <p>{loc.description}</p>
+                    
+                    {loc.accessibility && (
+                      <div className="accessibility-info">
+                        <Accessibility size={16} style={{flexShrink: 0, marginTop: '2px'}} />
+                        <span>{loc.accessibility}</span>
+                      </div>
+                    )}
+                    
+                    <div style={{marginTop: '1rem', display: 'flex', flexWrap: 'wrap', gap: '0.8rem'}}>
+                      <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#b45309', fontSize: '0.85rem', fontWeight: 600}}>
                         <TrendingUp size={16} /> +{loc.projected_rent_hike_percent}% /yr
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: loc.noise_level === 'High' ? '#dc2626' : '#059669', fontSize: '0.85rem', fontWeight: 600 }}>
+                      <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', color: loc.noise_level === 'High' ? '#dc2626' : '#059669', fontSize: '0.85rem', fontWeight: 600}}>
                         <VolumeX size={16} /> {loc.noise_level} Noise
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0284c7', fontSize: '0.85rem', width: '100%', fontWeight: 600 }}>
+                      <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0284c7', fontSize: '0.85rem', width: '100%', fontWeight: 600}}>
                         <Clock size={16} /> Best Hours: {loc.best_open_time} - {loc.best_close_time}
                       </div>
                     </div>
@@ -253,6 +317,42 @@ function App() {
             </div>
           </>
         )}
+      </div>
+
+      {/* Chatbot Widget */}
+      <div className="chatbot-widget">
+        {chatOpen && (
+          <div className="chatbot-window">
+            <div className="chatbot-header">
+              <span>BizLocate AI Assistant</span>
+              <button className="chatbot-close" onClick={() => setChatOpen(false)}><X size={20} /></button>
+            </div>
+            <div className="chatbot-messages">
+              {chatMessages.map((msg, idx) => (
+                <div key={idx} className={`chat-message ${msg.sender}`}>
+                  {msg.text}
+                </div>
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+            <form className="chatbot-input-area" onSubmit={handleChatSubmit}>
+              <input 
+                type="text" 
+                placeholder="Ask about trends, areas..." 
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+              />
+              <button type="submit"><Send size={18} /></button>
+            </form>
+          </div>
+        )}
+        <button 
+          className="chatbot-button" 
+          onClick={() => setChatOpen(!chatOpen)}
+          style={{ display: chatOpen ? 'none' : 'flex' }}
+        >
+          <MessageSquare size={28} />
+        </button>
       </div>
     </div>
   );
