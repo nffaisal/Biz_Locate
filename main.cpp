@@ -22,6 +22,9 @@ struct Location {
     std::string best_open_time;
     std::string best_close_time;
     std::string description;
+    int disabled_score;
+    int transit_score;
+    std::string parking_prediction;
     std::string accessibility;
 };
 
@@ -52,6 +55,10 @@ std::vector<Location> loadLocations(const std::string& filename) {
         std::getline(ss, loc.best_open_time, ',');
         std::getline(ss, loc.best_close_time, ',');
         std::getline(ss, loc.description, ',');
+        
+        std::getline(ss, token, ','); loc.disabled_score = std::stoi(token);
+        std::getline(ss, token, ','); loc.transit_score = std::stoi(token);
+        std::getline(ss, loc.parking_prediction, ',');
         std::getline(ss, loc.accessibility, ',');
         
         locations.push_back(loc);
@@ -81,7 +88,6 @@ double calculateScore(const Location& loc, double userMaxRentPerSqft, const std:
     return score;
 }
 
-// Helper to convert string to lowercase for basic matching
 std::string toLower(std::string s) {
     std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c){ return std::tolower(c); });
     return s;
@@ -163,7 +169,12 @@ int main() {
                     j["best_open_time"] = rl.loc.best_open_time;
                     j["best_close_time"] = rl.loc.best_close_time;
                     j["description"] = rl.loc.description;
+                    
+                    j["disabled_score"] = rl.loc.disabled_score;
+                    j["transit_score"] = rl.loc.transit_score;
+                    j["parking_prediction"] = rl.loc.parking_prediction;
                     j["accessibility"] = rl.loc.accessibility;
+                    
                     j["score"] = rl.score;
                     j["estimated_monthly_rent"] = rl.loc.avg_rent_sqft * spaceSizeSqft;
                     j["is_approximation"] = false;
@@ -171,9 +182,7 @@ int main() {
                 }
             }
 
-            // Approximation logic if no exact matches are found
             if (!exactMatchFound && !ranked.empty()) {
-                // Return top 3 closest matches as approximations
                 for (size_t i = 0; i < std::min(size_t(3), ranked.size()); ++i) {
                     const auto& rl = ranked[i];
                     json j;
@@ -188,8 +197,13 @@ int main() {
                     j["best_open_time"] = rl.loc.best_open_time;
                     j["best_close_time"] = rl.loc.best_close_time;
                     j["description"] = rl.loc.description;
+                    
+                    j["disabled_score"] = rl.loc.disabled_score;
+                    j["transit_score"] = rl.loc.transit_score;
+                    j["parking_prediction"] = rl.loc.parking_prediction;
                     j["accessibility"] = rl.loc.accessibility;
-                    j["score"] = 0.0; // Reset score for display purposes
+                    
+                    j["score"] = 0.0; 
                     double estRent = rl.loc.avg_rent_sqft * spaceSizeSqft;
                     j["estimated_monthly_rent"] = estRent;
                     j["is_approximation"] = true;
@@ -236,7 +250,6 @@ int main() {
         res.status = 200;
     });
 
-    // Serve frontend build if available
     svr.set_mount_point("/", "./frontend/dist");
 
     std::cout << "Server starting at http://localhost:8080\n";
